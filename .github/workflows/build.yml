@@ -24,12 +24,9 @@ jobs:
       run: brew install xcodegen
     
     - name: Generate Xcode Project
-      run: xcodegen generate
-    
-    - name: Show Project Structure
       run: |
+        xcodegen generate
         ls -la
-        ls -la Sources/
     
     - name: Build App
       run: |
@@ -40,25 +37,15 @@ jobs:
                    CODE_SIGNING_ALLOWED=NO \
                    CODE_SIGNING_REQUIRED=NO \
                    CODE_SIGN_IDENTITY="" \
-                   build 2>&1 | tee build.log
-      shell: bash
-    
-    - name: Upload Build Log
-      if: failure()
-      uses: actions/upload-artifact@v4
-      with:
-        name: build-log
-        path: build.log
+                   build 2>&1 | tail -100
     
     - name: Create IPA
-      if: success()
       run: |
         mkdir -p build/Payload
         cp -r $(find ~/Library/Developer/Xcode/DerivedData -name "CatVodPlayer.app" -type d | head -1) build/Payload/
         cd build && zip -r CatVodPlayer.ipa Payload
     
     - name: Upload IPA
-      if: success()
       uses: actions/upload-artifact@v4
       with:
         name: CatVodPlayer-IPA
