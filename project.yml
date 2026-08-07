@@ -6,11 +6,6 @@ options:
   xcodeVersion: "15.0"
   generateEmptyDirectories: true
 
-packages:
-  VLCKit:
-    url: https://code.videolan.org/videolan/VLCKit
-    from: 3.6.0
-
 settings:
   base:
     PRODUCT_NAME: "影视仓"
@@ -36,6 +31,3 @@ targets:
         SWIFT_OBJC_BRIDGING_HEADER: Sources/CatVodPlayer-Bridging-Header.h
         LD_RUNPATH_SEARCH_PATHS: ["$(inherited)", "@executable_path/Frameworks"]
         OTHER_LDFLAGS: ["$(inherited)", "-ObjC"]
-    dependencies:
-      - package: VLCKit
-        product: VLCKit
