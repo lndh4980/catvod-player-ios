@@ -1,52 +1,6 @@
-name: Build iOS App
-
-on:
-  push:
-    branches: [main, master]
-  pull_request:
-    branches: [main, master]
-  workflow_dispatch:
-
-jobs:
-  build:
-    runs-on: macos-14
-    
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-    
-    - name: Setup Xcode
-      uses: maxim-lobanov/setup-xcode@v1
-      with:
-        xcode-version: '15.4'
-    
-    - name: Install XcodeGen
-      run: brew install xcodegen
-    
-    - name: Generate Xcode Project
-      run: |
-        xcodegen generate
-        ls -la
-    
-    - name: Build App
-      run: |
-        xcodebuild -project CatVodPlayer.xcodeproj \
-                   -scheme CatVodPlayer \
-                   -configuration Release \
-                   -destination 'generic/platform=iOS' \
-                   CODE_SIGNING_ALLOWED=NO \
-                   CODE_SIGNING_REQUIRED=NO \
-                   CODE_SIGN_IDENTITY="" \
-                   build 2>&1 | tail -100
-    
-    - name: Create IPA
-      run: |
-        mkdir -p build/Payload
-        cp -r $(find ~/Library/Developer/Xcode/DerivedData -name "CatVodPlayer.app" -type d | head -1) build/Payload/
-        cd build && zip -r CatVodPlayer.ipa Payload
-    
-    - name: Upload IPA
-      uses: actions/upload-artifact@v4
-      with:
-        name: CatVodPlayer-IPA
-        path: build/CatVodPlayer.ipa
+*.xcodeproj
+*.xcworkspace
+build/
+DerivedData/
+*.ipa
+.DS_Store
