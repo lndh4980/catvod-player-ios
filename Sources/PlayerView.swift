@@ -1,5 +1,5 @@
 import SwiftUI
-import MobileVLCKit
+import VLCKit
 
 struct PlayerView: View {
     let url: String
