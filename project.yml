@@ -4,13 +4,7 @@ options:
   deploymentTarget:
     iOS: "16.0"
   xcodeVersion: "15.4"
-  createIntermediateGroups: true
   generateEmptyDirectories: true
-  defaultConfig: "Release"
-
-configFiles:
-  Release: ""
-
 settings:
   base:
     PRODUCT_NAME: "影视仓"
@@ -19,11 +13,11 @@ settings:
     SWIFT_VERSION: "5.9"
     IPHONEOS_DEPLOYMENT_TARGET: "16.0"
     TARGETED_DEVICE_FAMILY: "1,2"
-    CODE_SIGN_STYLE: Manual
+    CODE_SIGN_STYLE: Automatic
     ENABLE_BITCODE: NO
-    CODE_SIGNING_REQUIRED: NO
-    CODE_SIGNING_ALLOWED: NO
-
+    DEVELOPMENT_TEAM: ""
+    LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/Frameworks"
+    SWIFT_OBJC_BRIDGING_HEADER: ""
 targets:
   CatVodPlayer:
     type: application
@@ -36,7 +30,4 @@ targets:
       base:
         INFOPLIST_FILE: Sources/Info.plist
         PRODUCT_BUNDLE_IDENTIFIER: com.catvod.player
-        CODE_SIGN_ENTITLEMENTS: ""
-        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/Frameworks"
-        SWIFT_OBJC_BRIDGING_HEADER: ""
-        GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_ENTITLEMENTS: Sources/CatVodPlayer.entitlements
