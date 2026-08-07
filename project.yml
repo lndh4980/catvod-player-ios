@@ -15,19 +15,21 @@ settings:
     IPHONEOS_DEPLOYMENT_TARGET: "16.0"
     TARGETED_DEVICE_FAMILY: "1,2"
     CODE_SIGN_STYLE: Automatic
-    ENABLE_BITCODE: false
+    ENABLE_BITCODE: NO
+    DEVELOPMENT_TEAM: ""
 
 targets:
   CatVodPlayer:
     type: application
     platform: iOS
     sources:
-      - Sources
+      - path: Sources
+        excludes:
+          - "**/.DS_Store"
     settings:
       base:
         INFOPLIST_FILE: Sources/Info.plist
         PRODUCT_BUNDLE_IDENTIFIER: com.catvod.player
         CODE_SIGN_ENTITLEMENTS: Sources/CatVodPlayer.entitlements
-        SWIFT_OBJC_BRIDGING_HEADER: Sources/CatVodPlayer-Bridging-Header.h
-        LD_RUNPATH_SEARCH_PATHS: ["$(inherited)", "@executable_path/Frameworks"]
-        OTHER_LDFLAGS: ["$(inherited)", "-ObjC"]
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/Frameworks"
+        SWIFT_OBJC_BRIDGING_HEADER: ""
