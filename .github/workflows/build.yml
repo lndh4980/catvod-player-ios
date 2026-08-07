@@ -45,10 +45,10 @@ jobs:
     - name: Create IPA
       if: success()
       run: |
-        APP=$(find ~/Library/Developer/Xcode/DerivedData -name "CatVodPlayer.app" -type d | head -1)
+        APP=$(find ~/Library/Developer/Xcode/DerivedData -name "*.app" -type d -path "*CatVodPlayer*" | head -1)
         echo "APP=$APP"
         if [ -z "$APP" ]; then
-          echo "App not found"; tail -30 /tmp/build.log; exit 1
+          echo "App not found"; ls ~/Library/Developer/Xcode/DerivedData/; exit 1
         fi
         mkdir -p build/Payload
         cp -r "$APP" build/Payload/
