@@ -23,30 +23,19 @@ jobs:
     - name: Install XcodeGen
       run: brew install xcodegen
     
-    - name: Setup VLCKit with CocoaPods
-      run: |
-        mkdir -p Frameworks
-        cat > Podfile << 'PODEOF'
-        platform :ios, '16.0'
-        use_frameworks!
-        target 'CatVodPlayer' do
-          pod 'MobileVLCKit', :podspec => 'https://code.videolan.org/videolan/VLCKit/-/raw/master/MobileVLCKit.podspec'
-        end
-        target 'CatVodPlayerTests' do
-          inherit! :search_paths
-        end
-        PODEOF
-        pod install
-    
     - name: Generate Xcode Project
       run: xcodegen generate
     
+    - name: Resolve Swift Packages
+      run: xcodebuild -project CatVodPlayer.xcodeproj -resolvePackageDependencies -clonedSourcePackagesDirPath SourcePackages
+    
     - name: Build App
       run: |
-        xcodebuild -workspace CatVodPlayer.xcworkspace \
+        xcodebuild -project CatVodPlayer.xcodeproj \
                    -scheme CatVodPlayer \
                    -configuration Release \
                    -destination 'generic/platform=iOS' \
+                   -clonedSourcePackagesDirPath SourcePackages \
                    CODE_SIGNING_ALLOWED=NO \
                    CODE_SIGNING_REQUIRED=NO \
                    CODE_SIGN_IDENTITY="" \
