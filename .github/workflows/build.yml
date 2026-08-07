@@ -20,24 +20,39 @@ jobs:
       with:
         xcode-version: '15.4'
     
-    - name: Install XcodeGen (compatible version)
+    - name: Install XcodeGen (v2.38.0)
       run: |
-        brew install xcodegen@2.38.0 || brew install xcodegen
+        # Remove existing xcodegen if any
+        rm -f /usr/local/bin/xcodegen /opt/homebrew/bin/xcodegen 2>/dev/null || true
+        # Download XcodeGen 2.38.0 (compatible with Xcode 15)
+        curl -fsSL https://github.com/yonaskolb/XcodeGen/releases/download/2.38.0/XcodeGen-2.38.0.tar.gz -o /tmp/xcodegen.tar.gz
+        tar -xzf /tmp/xcodegen.tar.gz -C /tmp
+        mkdir -p ~/bin
+        cp /tmp/XcodeGen-2.38.0/xcodegen ~/bin/
+        chmod +x ~/bin/xcodegen
+        export PATH="$HOME/bin:$PATH"
         xcodegen version
     
     - name: Generate Xcode Project
       run: |
+        export PATH="$HOME/bin:$PATH"
         xcodegen generate
-        # Check and fix project format if needed
-        if grep -q 'objectVersion = 77' CatVodPlayer.xcodeproj/project.pbxproj 2>/dev/null; then
-          sed -i '' 's/objectVersion = 77/objectVersion = 56/g' CatVodPlayer.xcodeproj/project.pbxproj
-          echo "Fixed project format from 77 to 56"
+        # Fix project format for Xcode 15 compatibility
+        PLIST_FILE="CatVodPlayer.xcodeproj/project.pbxproj"
+        if grep -q 'objectVersion = 77' "$PLIST_FILE"; then
+          sed -i '' 's/objectVersion = 77/objectVersion = 56/g' "$PLIST_FILE"
+          echo "Fixed project format to version 56"
         fi
-        ls -la CatVodPlayer.xcodeproj/
+        if grep -q 'objectVersion = 73' "$PLIST_FILE"; then
+          sed -i '' 's/objectVersion = 73/objectVersion = 56/g' "$PLIST_FILE"
+          echo "Fixed project format to version 56"
+        fi
+        head -10 "$PLIST_FILE"
     
     - name: Build App
       id: build
       run: |
+        export PATH="$HOME/bin:$PATH"
         xcodebuild -project CatVodPlayer.xcodeproj \
                    -scheme CatVodPlayer \
                    -configuration Release \
@@ -46,10 +61,12 @@ jobs:
                    CODE_SIGNING_REQUIRED=NO \
                    CODE_SIGN_IDENTITY="" \
                    DEVELOPMENT_TEAM="" \
-                   build 2>&1 | tee /tmp/build.log | tail -50
-        BUILD_EXIT_CODE=${PIPESTATUS[0]}
-        echo "BUILD_EXIT_CODE=$BUILD_EXIT_CODE"
-        exit $BUILD_EXIT_CODE
+                   build 2>&1 | tee /tmp/build.log
+        EXIT_CODE=${PIPESTATUS[0]}
+        echo "BUILD_EXIT_CODE=$EXIT_CODE"
+        echo "=== Last 30 lines of build log ==="
+        tail -30 /tmp/build.log
+        exit $EXIT_CODE
 
     - name: Create IPA
       if: success()
@@ -64,7 +81,7 @@ jobs:
         mkdir -p build/Payload
         cp -r "$APP_PATH" build/Payload/
         cd build && zip -r CatVodPlayer.ipa Payload
-        ls -la
+        ls -la CatVodPlayer.ipa
 
     - name: Upload IPA
       if: success()
