@@ -20,15 +20,23 @@ jobs:
       with:
         xcode-version: '15.4'
     
-    - name: Install XcodeGen
-      run: brew install xcodegen
+    - name: Install XcodeGen (compatible version)
+      run: |
+        brew install xcodegen@2.38.0 || brew install xcodegen
+        xcodegen version
     
     - name: Generate Xcode Project
       run: |
         xcodegen generate
-        ls -la
+        # Check and fix project format if needed
+        if grep -q 'objectVersion = 77' CatVodPlayer.xcodeproj/project.pbxproj 2>/dev/null; then
+          sed -i '' 's/objectVersion = 77/objectVersion = 56/g' CatVodPlayer.xcodeproj/project.pbxproj
+          echo "Fixed project format from 77 to 56"
+        fi
+        ls -la CatVodPlayer.xcodeproj/
     
     - name: Build App
+      id: build
       run: |
         xcodebuild -project CatVodPlayer.xcodeproj \
                    -scheme CatVodPlayer \
@@ -37,15 +45,29 @@ jobs:
                    CODE_SIGNING_ALLOWED=NO \
                    CODE_SIGNING_REQUIRED=NO \
                    CODE_SIGN_IDENTITY="" \
-                   build 2>&1 | tail -100
-    
+                   DEVELOPMENT_TEAM="" \
+                   build 2>&1 | tee /tmp/build.log | tail -50
+        BUILD_EXIT_CODE=${PIPESTATUS[0]}
+        echo "BUILD_EXIT_CODE=$BUILD_EXIT_CODE"
+        exit $BUILD_EXIT_CODE
+
     - name: Create IPA
+      if: success()
       run: |
+        APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -name "CatVodPlayer.app" -type d 2>/dev/null | head -1)
+        echo "Found app at: $APP_PATH"
+        if [ -z "$APP_PATH" ]; then
+          echo "ERROR: App bundle not found"
+          ls ~/Library/Developer/Xcode/DerivedData/ 2>/dev/null || echo "No DerivedData"
+          exit 1
+        fi
         mkdir -p build/Payload
-        cp -r $(find ~/Library/Developer/Xcode/DerivedData -name "CatVodPlayer.app" -type d | head -1) build/Payload/
+        cp -r "$APP_PATH" build/Payload/
         cd build && zip -r CatVodPlayer.ipa Payload
-    
+        ls -la
+
     - name: Upload IPA
+      if: success()
       uses: actions/upload-artifact@v4
       with:
         name: CatVodPlayer-IPA
