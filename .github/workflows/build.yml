@@ -1,0 +1,95 @@
+name: Build iOS App
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: '15.4'
+    
+    - name: Install XcodeGen
+      run: |
+        brew install xcodegen
+    
+    - name: Download VLCKit
+      run: |
+        mkdir -p Frameworks
+        curl -L "https://download.videolan.org/vlc-iOS/VLCKit/3.6.0/MobileVLCKit-3.6.0.zip" -o VLCKit.zip
+        unzip -q VLCKit.zip
+        cp -r MobileVLCKit.framework Frameworks/VLCKit.framework
+        rm -rf MobileVLCKit.framework VLCKit.zip
+    
+    - name: Generate Xcode Project
+      run: |
+        xcodegen generate
+    
+    - name: Build App (No Signing)
+      run: |
+        xcodebuild -project CatVodPlayer.xcodeproj \
+                   -scheme CatVodPlayer \
+                   -configuration Release \
+                   -destination 'generic/platform=iOS' \
+                   CODE_SIGNING_ALLOWED=NO \
+                   CODE_SIGNING_REQUIRED=NO \
+                   CODE_SIGN_IDENTITY="" \
+                   build
+    
+    - name: Create IPA
+      run: |
+        # 查找编译产物
+        APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -name "CatVodPlayer.app" | head -n 1)
+        
+        if [ -z "$APP_PATH" ]; then
+          echo "❌ 未找到编译产物"
+          exit 1
+        fi
+        
+        echo "✅ 找到 App：$APP_PATH"
+        
+        # 创建 IPA
+        mkdir -p build/Payload
+        cp -r "$APP_PATH" build/Payload/
+        cd build
+        zip -r CatVodPlayer.ipa Payload
+        
+        echo "✅ IPA 创建成功：$(pwd)/CatVodPlayer.ipa"
+    
+    - name: Upload IPA
+      uses: actions/upload-artifact@v4
+      with:
+        name: CatVodPlayer-IPA
+        path: build/CatVodPlayer.ipa
+    
+    - name: Create Release
+      if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: build/CatVodPlayer.ipa
+        tag_name: v${{ github.run_number }}
+        name: CatVodPlayer v${{ github.run_number }}
+        body: |
+          影视仓 iOS 播放器
+          
+          功能：
+          - 支持影视仓/CatVod JSON 配置
+          - 直播源播放（m3u/txt）
+          - 点播站点列表
+          - 自定义配置地址
+          
+          安装方式：
+          - TrollStore 安装（iOS 16.0+）
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
