@@ -3,56 +3,35 @@ name: Build iOS App
 on:
   push:
     branches: [main, master]
-  pull_request:
-    branches: [main, master]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: macos-14
-    
+
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-    
+
     - name: Setup Xcode
       uses: maxim-lobanov/setup-xcode@v1
       with:
         xcode-version: '15.4'
-    
-    - name: Install XcodeGen (v2.38.0)
+
+    - name: Install XcodeGen
+      run: brew install xcodegen
+
+    - name: Generate Xcode Project (and downgrade format for Xcode 15)
       run: |
-        # Remove existing xcodegen if any
-        rm -f /usr/local/bin/xcodegen /opt/homebrew/bin/xcodegen 2>/dev/null || true
-        # Download XcodeGen 2.38.0 (compatible with Xcode 15)
-        curl -fsSL https://github.com/yonaskolb/XcodeGen/releases/download/2.38.0/XcodeGen-2.38.0.tar.gz -o /tmp/xcodegen.tar.gz
-        tar -xzf /tmp/xcodegen.tar.gz -C /tmp
-        mkdir -p ~/bin
-        cp /tmp/XcodeGen-2.38.0/xcodegen ~/bin/
-        chmod +x ~/bin/xcodegen
-        export PATH="$HOME/bin:$PATH"
-        xcodegen version
-    
-    - name: Generate Xcode Project
-      run: |
-        export PATH="$HOME/bin:$PATH"
         xcodegen generate
-        # Fix project format for Xcode 15 compatibility
-        PLIST_FILE="CatVodPlayer.xcodeproj/project.pbxproj"
-        if grep -q 'objectVersion = 77' "$PLIST_FILE"; then
-          sed -i '' 's/objectVersion = 77/objectVersion = 56/g' "$PLIST_FILE"
-          echo "Fixed project format to version 56"
-        fi
-        if grep -q 'objectVersion = 73' "$PLIST_FILE"; then
-          sed -i '' 's/objectVersion = 73/objectVersion = 56/g' "$PLIST_FILE"
-          echo "Fixed project format to version 56"
-        fi
-        head -10 "$PLIST_FILE"
-    
+        echo "--- before fix ---"
+        grep -m1 "objectVersion" CatVodPlayer.xcodeproj/project.pbxproj
+        sed -i '' -E 's/objectVersion = [0-9]+/objectVersion = 56/g' CatVodPlayer.xcodeproj/project.pbxproj
+        echo "--- after fix ---"
+        grep -m1 "objectVersion" CatVodPlayer.xcodeproj/project.pbxproj
+
     - name: Build App
-      id: build
       run: |
-        export PATH="$HOME/bin:$PATH"
         xcodebuild -project CatVodPlayer.xcodeproj \
                    -scheme CatVodPlayer \
                    -configuration Release \
@@ -62,26 +41,18 @@ jobs:
                    CODE_SIGN_IDENTITY="" \
                    DEVELOPMENT_TEAM="" \
                    build 2>&1 | tee /tmp/build.log
-        EXIT_CODE=${PIPESTATUS[0]}
-        echo "BUILD_EXIT_CODE=$EXIT_CODE"
-        echo "=== Last 30 lines of build log ==="
-        tail -30 /tmp/build.log
-        exit $EXIT_CODE
 
     - name: Create IPA
       if: success()
       run: |
-        APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -name "CatVodPlayer.app" -type d 2>/dev/null | head -1)
-        echo "Found app at: $APP_PATH"
-        if [ -z "$APP_PATH" ]; then
-          echo "ERROR: App bundle not found"
-          ls ~/Library/Developer/Xcode/DerivedData/ 2>/dev/null || echo "No DerivedData"
-          exit 1
+        APP=$(find ~/Library/Developer/Xcode/DerivedData -name "CatVodPlayer.app" -type d | head -1)
+        echo "APP=$APP"
+        if [ -z "$APP" ]; then
+          echo "App not found"; tail -30 /tmp/build.log; exit 1
         fi
         mkdir -p build/Payload
-        cp -r "$APP_PATH" build/Payload/
+        cp -r "$APP" build/Payload/
         cd build && zip -r CatVodPlayer.ipa Payload
-        ls -la CatVodPlayer.ipa
 
     - name: Upload IPA
       if: success()
